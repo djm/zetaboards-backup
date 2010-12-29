@@ -10,7 +10,7 @@ class ThreadLoader(XPathItemLoader):
     pass
 
 
-class PostLoadeer(XPathItemLoader):
+class PostLoader(XPathItemLoader):
     pass
 
 
