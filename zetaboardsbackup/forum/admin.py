@@ -1,39 +1,41 @@
 from django.contrib import admin
-from library.models import Book, CurrencyTable, Price, Shop
+
+from forum.models import Forum, Thread, Post, User, UserGroup
 
 
-class BookAdmin(admin.ModelAdmin):
-    list_display = ['title', 'isbn', 'active']
-    list_editable = ['active']
-    list_filter = ['active']
-    save_on_top = True
-    search_fields = ['isbn', 'title']
-
-class CurrencyTableAdmin(admin.ModelAdmin):
-    list_display = ['from_currency', 'to_currency', 'rate']
-    list_filter = ['from_currency', 'to_currency']
-    save_on_top = True
+class ForumAdmin(admin.ModelAdmin):
+    list_display = ['title', 'zeta_id', 'parent', 'topics', 'replies', 'ordering']
+    list_editable = ['ordering']
+    search_fields = ['title', 'zeta_id']
 
 
-class PriceAdmin(admin.ModelAdmin):
-    list_display = ['shop', 'book', 'url_anchor', 'native_currency', 'native_price',
-            'native_delivery', 'native_total', 'converted_currency', 
-            'converted_price', 'converted_delivery', 'converted_total', 'error', 
-            'date_added']
-    list_filter = ['error']
-    save_on_top = True
-    search_fields = ['shop__name', 'book__isbn', 'book__title']
+class PostAdminInline(admin.StackedInline):
+    model = Post
+    extra = 0
 
 
-class ShopAdmin(admin.ModelAdmin):
-    list_display = ['name', 'url', 'short_name', 'delivery', 'featured', 
-            '_last_scraped', 'active']
-    list_editable = ['featured', 'active']
-    save_on_top = True
-    search_fields = ['name', 'url']
+class ThreadAdmin(admin.ModelAdmin):
+    inlines = [PostAdminInline]
+    list_display = ['title', 'user', 'zeta_id', 'forum', 'replies', 'views', 
+                        'date_posted']
+    search_fields = ['title', 'subtitle', 'zeta_id']
 
 
-admin.site.register(Book, BookAdmin)
-admin.site.register(CurrencyTable, CurrencyTableAdmin)
-admin.site.register(Price, PriceAdmin)
-admin.site.register(Shop, ShopAdmin)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ['zeta_id', 'thread', 'user', 'date_posted']
+    search_fields = ['thread__title', 'zeta_id']
+
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = ['username', 'zeta_id', 'user_group', 'member_number']
+    search_fields = ['username']
+
+class UserGroupAdmin(admin.ModelAdmin):
+    list_display = ['title']
+    search_fields = ['title']
+
+admin.site.register(Forum, ForumAdmin)
+admin.site.register(Thread, ThreadAdmin)
+admin.site.register(Post, PostAdmin)
+admin.site.register(User, UserAdmin)
+admin.site.register(UserGroup, UserGroupAdmin)
