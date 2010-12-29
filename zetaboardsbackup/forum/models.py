@@ -4,12 +4,12 @@ class Forum(models.Model):
     """
     A forum is a grouping of threads under a common topic.
     """
-    zeta_id = models.PositiveIntegerField()
+    zeta_id = models.PositiveIntegerField(primary_key=True)
     title = models.CharField(max_length=255)
     parent = models.ForeignKey('forum.Forum', blank=True, null=True, 
                                 related_name='subforums')
-    topics = models.PositiveIntegerField()
-    replies = models.PositiveIntegerField()
+    topics = models.PositiveIntegerField(blank=True, null=True)
+    replies = models.PositiveIntegerField(blank=True, null=True)
     ordering = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
@@ -24,7 +24,7 @@ class Thread(models.Model):
     A thread is the container for Posts, it holds them in a flat
     linear chronological way.
     """
-    zeta_id = models.PositiveIntegerField()
+    zeta_id = models.PositiveIntegerField(primary_key=True)
     user = models.ForeignKey('forum.User', related_name="threads")
     forum = models.ForeignKey('forum.Forum', related_name="threads")
     title = models.CharField(max_length=255)
@@ -44,7 +44,7 @@ class Post(models.Model):
     """
     An actual post by a user, attached to a thread.
     """
-    zeta_id = models.PositiveIntegerField()
+    zeta_id = models.PositiveIntegerField(primary_key=True)
     thread = models.ForeignKey('forum.Thread', related_name="posts")
     user = models.ForeignKey('forum.User', related_name="posts")
     raw_post_bbcode = models.TextField()
@@ -67,7 +67,7 @@ class User(models.Model):
     A zetaboard user account; not linked to django-auth as the intention
     is not to recreate login on a django site.
     """
-    zeta_id = models.PositiveIntegerField()
+    zeta_id = models.PositiveIntegerField(primary_key=True)
     username = models.CharField(max_length=100)
     user_group = models.ForeignKey('forum.User', related_name="users")
     member_number = models.PositiveIntegerField()
