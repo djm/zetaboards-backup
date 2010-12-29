@@ -1,46 +1,36 @@
+from scrapy.conf import settings
+from scrapy.exceptions import NotConfigured
 from scrapy.http import FormRequest
 from scrapy.spider import BaseSpider
 
-from scraper.items import BookItem
-from scraper.loader import BookLoader
+from scraper.items import ForumItem, ThreadItem, PostItem, UserItem, UserGroupItem
+from scraper.loader import ForumLoader, ThreadLoader, PostLoader, UserLoader, \
+        UserGroupLoader
 
-from library.models import AUD, Book, Price, Shop
+from forum.models import Forum, Thread, Post, User, UserGroup
 
-class BordersComAuSpider(BaseSpider):
-    name = 'borders.com.au'
-    books = Book.objects.all()
-    shop = Shop.objects.get(name__iexact=name)
+try:
+    USERNAME = settings.ZETABOARDS_USERNAME
+except AttributeError:
+    raise NotConfigured, "The Scrapy config requires `ZETABOARDS_USERNAME`."
+try:
+    PASSWORD = settings.ZETABOARDS_PASSWORD
+except AttributeError:
+    raise NotConfigured, "The Scrapy config requires `ZETABOARDS_PASSWORD`."
+try:
+    BOARD_URL = settings.ZETABOARDS_BOARD_URL
+except AttributeError:
+    raise NotConfigured, "`ZETABOARDS_BOARD_URL is not set. Set it to your boards" \
+            "full URL WITHOUT the trailing slash."
 
-    def start_requests(self):
-        request_list = []
-        for book in self.books:
-            form_request = FormRequest("http://www.borders.com.au/search",
-                    formdata={'query': book.isbn},
-                    callback=self.request_complete,
-                    meta={'book': book}
-                    )
-            request_list.append(form_request)
-        return request_list
+LOGIN_PATH = getattr(settings, 'ZETABOARDS_LOGIN_PATH', '/login/')
 
-    def request_complete(self, response):
-        # We submit a post request with the ISBN and expect
-        # it to redirect to a book.
-        if 'book' in response.url:
-            return self.parse(response)
-        else:
-            return None
+
+class ZetaboardsSpider(BaseSpider):
+    name = 'zetaboards'
+    start_urls = "%s%s" % (BOARD_URL, LOGIN_PATH)
 
     def parse(self, response):
-        l = BookLoader(item=BookItem(book=response.request.meta['book']), 
-                response=response)
-        price = l.get_xpath('//p[@class="price"]//b/text()')
-        if price:
-            l.add_value('price', price)
-        else:
-            l.add_value('error', Price.PRICE_UNAVAILABLE)
-        l.add_value('delivery', unicode(self.shop.delivery))
-        l.add_value('url', unicode(response.url))
-        l.add_value('currency', AUD)
-        return l.load_item()
+        pass
 
-SPIDER = BordersComAuSpider()
+SPIDER = ZetaboardsSpider()

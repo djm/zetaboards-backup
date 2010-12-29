@@ -10,7 +10,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'zetaboardsbackup',
         'USER': 'zetaboardsbackup',
-        'PASSWORD': '',
+        'PASSWORD': 'zetaboardsbackup',
         'HOST': '',
         'PORT': '',
     }
