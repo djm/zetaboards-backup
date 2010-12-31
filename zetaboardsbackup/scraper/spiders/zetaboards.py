@@ -53,10 +53,9 @@ class ZetaboardsSpider(BaseSpider):
         We're going to grab the member list first, followed
         by getting the root categories from the index.
         """
-        
+        index_req = Request(BOARD_URL, callback=self.root_index)
         member_req = Request("%s%s" % (BOARD_URL, MEMBERS_PATH),
                              callback=self.members_list)
-        index_req = Request(BOARD_URL, callback=self.root_index)
         return [member_req, index_req]
 
     def members_list(self, response):
