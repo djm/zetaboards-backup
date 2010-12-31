@@ -14,6 +14,7 @@ class ZetaboardsPipeline(object):
         """
         Process the various items.
         """
+        django_item = None
         # You can't attach pipelines to specific items
         # so unfortunately this is going to result in
         # a big elif branch. 
@@ -36,6 +37,7 @@ class ZetaboardsPipeline(object):
             spider.log("Processing Post Item.")
         elif isinstance(item, UserItem):
             spider.log("Processing User Item.")
+            print item
         elif isinstance(item, UserGroupItem):
             spider.log("Processing UserGroup Item.")
         return django_item

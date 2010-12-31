@@ -78,6 +78,13 @@ class User(models.Model):
     date_active = models.DateTimeField()
     date_joined = models.DateField()
 
+    class Meta:
+        ordering = ['username']
+
+    def __unicode__(self):
+        return self.username
+
+
 class UserGroup(models.Model):
     """
     A zetaboard user group.

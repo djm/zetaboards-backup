@@ -28,6 +28,7 @@ if not BOARD_URL:
 # POST'd login requests. To view it, check the 'action' attribute
 # of your login form. It will however most likely be the default..
 LOGIN_PATH = getattr(settings, 'ZETABOARDS_LOGIN_PATH', '/login/log_in/')
+MEMBERS_PATH = getattr(settings, 'ZETABOARDS_MEMBERS_PATH', '/members/')
 
 
 class ZetaboardsSpider(BaseSpider):
@@ -48,6 +49,69 @@ class ZetaboardsSpider(BaseSpider):
             callback=self.after_login)]
 
     def after_login(self, response):
+        """
+        We're going to grab the member list first, followed
+        by getting the root categories from the index.
+        """
+        
+        member_req = Request("%s%s" % (BOARD_URL, MEMBERS_PATH),
+                             callback=self.members_list)
+        index_req = Request(BOARD_URL, callback=self.root_index)
+        return [member_req, index_req]
+
+    def members_list(self, response):
+        """
+        Works out if we need to go into paginated members listing pages.
+        """
+        hxs = HtmlXPathSelector(response)
+        last_page = hxs.select('//ul[@class="cat-pages"]/li[last()]/a/text()')
+        if last_page:
+            last_page = last_page.extract()[0]
+            page_range = range(1, int(last_page)+1)
+            reqs = []
+            for page in page_range:
+                req = Request("%s%i/" % (response.url, page),
+                              callback=self.page_of_members_list)
+                reqs.append(req)
+            return reqs
+        else:
+            # There is just the one members list page.
+            # We're already on the index so we don't
+            # need an extra request.
+            return self.page_of_members_list(response)
+
+    def page_of_members_list(self, response):
+        """
+        An individual page of the members listing.
+        This parses and makes requests for each
+        profile.
+        """
+        hxs = HtmlXPathSelector(response)
+        members = hxs.select('//a[@class="member"]/@href').extract()
+        reqs = []
+        for member_url in members:
+            req = Request(member_url, callback=self.member_profile)
+            reqs.append(req)
+        return reqs
+
+    def member_profile(self, response):
+        """
+        This parses a profile page into a User.
+        """
+        hxs = HtmlXPathSelector(response)
+        mem_load = UserLoader(UserItem(), response=response)        
+        mem_load.add_value('zeta_id', unicode(response.url))
+        mem_load.add_xpath('username', '//th[@class="l"]/text()')
+        mem_load.add_xpath('user_group', '//dl[@class="user_info"]/dt[text()="Group:"]/following-sibling::dd/text()')
+        mem_load.add_xpath('member_number', '//dl[@class="user_info"]/dt[text()="Member"]/following-sibling::dd/text()')
+        mem_load.add_xpath('post_count', '//dl[@class="user_info"]/dt[text()="Posts:"]/following-sibling::dd/text()')
+        mem_load.add_xpath('signature', '//td[@class="c_sig"]/text()')
+        #mem_load.add_xpath('date_birthday', '')
+        #mem_load.add_xpath('date_active', '')
+        mem_load.add_xpath('date_joined', '//dl[@class="user_info"]/dt[text()="Joined:"]/following-sibling::dd/text()')
+        return mem_load.load_item()
+
+    def root_index(self, response):
         """
         Crawl the main index to get all root categories.
         """
@@ -70,6 +134,7 @@ class ZetaboardsSpider(BaseSpider):
                           callback=self.root_category_subpages)
             items_and_reqs.append(req)
         return items_and_reqs
+
 
     def root_category_subpages(self, response):
         """
@@ -115,19 +180,19 @@ class ZetaboardsSpider(BaseSpider):
         Crawl a specific paged thread list to get a list of threads.
         """
         hxs = HtmlXPathSelector(response)
-        import ipdb; ipdb.set_trace();
-        threads = hxs.select('')
+        threads = hxs.select('//table[@class="posts"]/tr[contains(@class, "row1") or contains(@class, "row2")]')
         items_and_reqs = []
         for thr_selector in threads:
             thr_load = ThreadLoader(ThreadItem(), thr_selector)
-            thr_load.add_xpath('zeta_id', '')
-            thr_load.add_value('user', self.get_user())
+            thr_load.add_xpath('zeta_id', 'td[@class="c_cat-title"]/a/@href')
+            user_href = thr_selector.select('td[@class="c_cat-starter"]/a/@href').extract()[0]
+            thr_load.add_value('user', self.get_user(user_href))
             thr_load.add_value('forum', response.request.meta['parent'])
-            thr_load.add_xpath('title', '')
-            thr_load.add_xpath('subtitle', '')
-            thr_load.add_xpath('replies', '')
-            thr_load.add_xpath('view', '')
-            thr_load.add_xpath('date_posted', '')
+            thr_load.add_xpath('title', 'td[@class="c_cat-title"]/a/text()')
+            thr_load.add_xpath('subtitle', 'td[@class="c_cat-title"]/div[@class="description"]/text()')
+            thr_load.add_xpath('replies', 'td[@class="c_cat-replies"]/a/text()')
+            thr_load.add_xpath('view', 'td[@class="c_cat-views"]/text()')
+            thr_load.add_xpath('date_posted', 'td[@class="c_cat-lastpost"]/div[@class="t_lastpostdate"]/text()')
             thr = thr_load.load_item()
             items_and_reqs.append(thr)
             req = Request(thr_selector.select('').extract()[0],
