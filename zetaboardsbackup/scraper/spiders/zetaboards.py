@@ -115,6 +115,7 @@ class ZetaboardsSpider(BaseSpider):
         """
         Crawl the main index to get all root categories.
         """
+        import ipdb; ipdb.set_trace();
         hxs = HtmlXPathSelector(response)
         # Get all root categories on the page, store them and then fire of a 
         # request to go visit their specific subpage so we can get the subcats.
