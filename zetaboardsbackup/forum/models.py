@@ -69,13 +69,11 @@ class User(models.Model):
     """
     zeta_id = models.PositiveIntegerField(primary_key=True)
     username = models.CharField(max_length=100)
-    user_group = models.ForeignKey('forum.User', related_name="users")
+    user_group = models.ForeignKey('forum.UserGroup', related_name="users")
     member_number = models.PositiveIntegerField()
     post_count = models.PositiveIntegerField()
     signature = models.TextField(blank=True)
-    registration_ip_address = models.IPAddressField()
-    date_birthday = models.DateField()
-    date_active = models.DateTimeField()
+    date_birthday = models.DateField(blank=True, null=True)
     date_joined = models.DateField()
 
     class Meta:

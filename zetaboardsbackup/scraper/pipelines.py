@@ -2,7 +2,7 @@
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/topics/item-pipeline.html
-from forum.models import Forum
+from forum.models import Forum, UserGroup
 from scraper.items import ForumItem, ThreadItem, PostItem, UserItem, UserGroupItem
 
 class ZetaboardsPipeline(object):
@@ -29,7 +29,7 @@ class ZetaboardsPipeline(object):
                                         defaults={
                                             'title': item['title'],
                                             'parent': parent,
-                                            },
+                                            }
                                         )
         elif isinstance(item, ThreadItem):
             spider.log("Processing Thread Item.")
@@ -37,7 +37,19 @@ class ZetaboardsPipeline(object):
             spider.log("Processing Post Item.")
         elif isinstance(item, UserItem):
             spider.log("Processing User Item.")
-            print item
+            user_group, created = UserGroup.objects.get_or_create(title=item['user_group'])
+            django_item, created = item.django_model._default_manager.get_or_create(
+                                        zeta_id=item['zeta_id'],
+                                        defaults={
+                                            'username': item['username'],
+                                            'user_group': user_group,
+                                            'member_number': item['member_number'],
+                                            'post_count': item['post_count'],
+                                            'signature': item['signature'],
+                                            'date_birthday': item.get('date_birthday'),
+                                            'date_joined': item['date_joined'],
+                                            }
+                                        )
         elif isinstance(item, UserGroupItem):
             spider.log("Processing UserGroup Item.")
         return django_item

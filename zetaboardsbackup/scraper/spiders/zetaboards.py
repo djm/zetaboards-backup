@@ -105,9 +105,9 @@ class ZetaboardsSpider(BaseSpider):
         mem_load.add_xpath('user_group', '//dl[@class="user_info"]/dt[text()="Group:"]/following-sibling::dd/text()')
         mem_load.add_xpath('member_number', '//dl[@class="user_info"]/dt[text()="Member"]/following-sibling::dd/text()')
         mem_load.add_xpath('post_count', '//dl[@class="user_info"]/dt[text()="Posts:"]/following-sibling::dd/text()')
-        mem_load.add_xpath('signature', '//td[@class="c_sig"]/text()')
-        #mem_load.add_xpath('date_birthday', '')
-        #mem_load.add_xpath('date_active', '')
+        mem_load.add_xpath('signature', '//td[@class="c_sig"]/node()')
+        date_birthday = mem_load.get_xpath('//td[text()="Birthday:"]/following-sibling::td/text()')
+        mem_load.add_value('date_birthday', date_birthday)
         mem_load.add_xpath('date_joined', '//dl[@class="user_info"]/dt[text()="Joined:"]/following-sibling::dd/text()')
         return mem_load.load_item()
 
