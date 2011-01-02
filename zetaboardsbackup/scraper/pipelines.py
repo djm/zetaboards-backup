@@ -33,16 +33,27 @@ class ZetaboardsPipeline(object):
                                         )
         elif isinstance(item, ThreadItem):
             spider.log("Processing Thread Item.")
+            django_item, created = item.django_model._default_manager.get_or_create(
+                                        zeta_id=item['zeta_id'],
+                                        defaults={
+                                            'username': item['user'],
+                                            'forum_id': item['forum'],
+                                            'title': item['title'],
+                                            'subtitle': item.get('subtitle'),
+                                            'replies': item['replies'],
+                                            'views': item['views'],
+                                            'date_posted': item['date_posted']
+                                            }
+                                        )
         elif isinstance(item, PostItem):
             spider.log("Processing Post Item.")
         elif isinstance(item, UserItem):
             spider.log("Processing User Item.")
-            user_group, created = UserGroup.objects.get_or_create(title=item['user_group'])
             django_item, created = item.django_model._default_manager.get_or_create(
                                         zeta_id=item['zeta_id'],
                                         defaults={
                                             'username': item['username'],
-                                            'user_group': user_group,
+                                            'user_group': item['user_group'],
                                             'member_number': item['member_number'],
                                             'post_count': item['post_count'],
                                             'signature': item['signature'],

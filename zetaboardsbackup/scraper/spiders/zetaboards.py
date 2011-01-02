@@ -6,7 +6,7 @@ from scrapy.selector import HtmlXPathSelector
 from scrapy.spider import BaseSpider
 
 from scraper.items import ForumItem, ThreadItem, PostItem, UserItem, UserGroupItem
-from scraper.loaders import ForumLoader, ThreadLoader, PostLoader, UserLoader, \
+from scraper.loaders import extract_numbers, ForumLoader, ThreadLoader, PostLoader, UserLoader, \
         UserGroupLoader
 
 from forum.models import Forum, Thread, Post, User, UserGroup
@@ -50,48 +50,18 @@ class ZetaboardsSpider(BaseSpider):
 
     def after_login(self, response):
         """
-        We're going to grab the member list first, followed
-        by getting the root categories from the index.
+        Examine the root index.
         """
-        index_req = Request(BOARD_URL, callback=self.root_index)
-        member_req = Request("%s%s" % (BOARD_URL, MEMBERS_PATH),
-                             callback=self.members_list)
-        return [member_req, index_req]
+        return self.root_index(response)
 
-    def members_list(self, response):
-        """
-        Works out if we need to go into paginated members listing pages.
-        """
-        hxs = HtmlXPathSelector(response)
-        last_page = hxs.select('//ul[@class="cat-pages"]/li[last()]/a/text()')
-        if last_page:
-            last_page = last_page.extract()[0]
-            page_range = range(1, int(last_page)+1)
-            reqs = []
-            for page in page_range:
-                req = Request("%s%i/" % (response.url, page),
-                              callback=self.page_of_members_list)
-                reqs.append(req)
-            return reqs
+    def get_member_if_required(self, url):
+        zeta_id = extract_numbers(url)
+        try:
+            user = User.objects.get(pk=zeta_id)
+        except User.DoesNotExist:
+            return Request(url, callback=self.member_profile, priority=100)
         else:
-            # There is just the one members list page.
-            # We're already on the index so we don't
-            # need an extra request.
-            return self.page_of_members_list(response)
-
-    def page_of_members_list(self, response):
-        """
-        An individual page of the members listing.
-        This parses and makes requests for each
-        profile.
-        """
-        hxs = HtmlXPathSelector(response)
-        members = hxs.select('//a[@class="member"]/@href').extract()
-        reqs = []
-        for member_url in members:
-            req = Request(member_url, callback=self.member_profile)
-            reqs.append(req)
-        return reqs
+            return None
 
     def member_profile(self, response):
         """
@@ -133,7 +103,6 @@ class ZetaboardsSpider(BaseSpider):
                           callback=self.root_category_subpages)
             items_and_reqs.append(req)
         return items_and_reqs
-
 
     def root_category_subpages(self, response):
         """
@@ -184,21 +153,59 @@ class ZetaboardsSpider(BaseSpider):
         for thr_selector in threads:
             thr_load = ThreadLoader(ThreadItem(), thr_selector)
             thr_load.add_xpath('zeta_id', 'td[@class="c_cat-title"]/a/@href')
-            user_href = thr_selector.select('td[@class="c_cat-starter"]/a/@href').extract()[0]
-            thr_load.add_value('user', self.get_user(user_href))
+            user = self.get_member_if_required(thr_selector.select('td[@class="c_cat-starter"]/a/@href').extract()[0])
+            if user:
+                items_and_reqs.append(user)
+            thr_load.add_xpath('user', 'td[@class="c_cat-starter"]/a/text()')
             thr_load.add_value('forum', response.request.meta['parent'])
             thr_load.add_xpath('title', 'td[@class="c_cat-title"]/a/text()')
             thr_load.add_xpath('subtitle', 'td[@class="c_cat-title"]/div[@class="description"]/text()')
             thr_load.add_xpath('replies', 'td[@class="c_cat-replies"]/a/text()')
-            thr_load.add_xpath('view', 'td[@class="c_cat-views"]/text()')
-            thr_load.add_xpath('date_posted', 'td[@class="c_cat-lastpost"]/div[@class="t_lastpostdate"]/text()')
+            thr_load.add_xpath('views', 'td[@class="c_cat-views"]/text()')
+            thr_load.add_xpath('date_posted', 'td[@class="c_cat-title"]/a/@title')
             thr = thr_load.load_item()
             items_and_reqs.append(thr)
-            req = Request(thr_selector.select('').extract()[0],
+            url = thr_selector.select('td[@class="c_cat-title"]/a/@href').extract()[0]
+            req = Request("%s1/" % url,
                           meta={'parent': thr['zeta_id']},
                           callback=self.post_list)
             items_and_reqs.append(req)
         return items_and_reqs
 
+    def post_list(self, response):
+        """
+        Calculate the number of pages in thread and return
+        a request for each page so that we can grab the posts.
+        """
+        hxs = HtmlXPathSelector(response)
+        # We now need to work out how many pages are in this topic, if more than one.
+        try:
+            last_page = hxs.select('//ul[@class="cat-pages"]/li[last()]/a/text()').extract()[0]
+            page_range = range(1, int(last_page)+1)
+        except IndexError:
+            # Then we couldn't find a pagination list, 
+            # so we only have one page.
+            return self.page_of_post_list(response)
+        reqs = []
+        base_thread_url = response.url.strip('1/')
+        for page in page_range:
+            req = Request("%s%i/" % (base_thread_url, page),
+                          meta={'parent': response.request.meta['parent']},
+                          callback=self.page_of_thread_list)
+            reqs.append(req)
+        return reqs
+
+    def page_of_post_list(self, response):
+        """
+        Parse a page of topic posts.
+        """
+        self.log(response.url)
+        return None
+
+    def individual_post(self, response):
+        """
+        We visit the edit page for each post so we can grab the raw BBcode.
+        """
+        return None
 
 SPIDER = ZetaboardsSpider()

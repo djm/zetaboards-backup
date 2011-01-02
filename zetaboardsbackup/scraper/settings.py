@@ -9,8 +9,8 @@ ITEM_PIPELINES = ['scraper.pipelines.ZetaboardsPipeline']
 USER_AGENT = 'Mozilla/5.0 (X11; U; Linux x86_64; en-GB; rv:1.9.2.13) Gecko/20101206 Ubuntu/10.04 (lucid) Firefox/3.6.13'
 
 # Connection Related Settings
-CONCURRENT_REQUESTS_PER_SPIDER = 1
-CONCURRENT_SPIDERS = 1
+CONCURRENT_REQUESTS_PER_SPIDER = 4
+CONCURRENT_SPIDERS = 4
 #DOWNLOAD_DELAY = 15
 #RANDOMIZE_DOWNLOAD_DELAY = True
 
@@ -27,6 +27,10 @@ DOWNLOADER_MIDDLEWARES_BASE = {
     'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 750,
     'scrapy.contrib.downloadermiddleware.stats.DownloaderStats': 850,
     'scrapy.contrib.downloadermiddleware.httpcache.HttpCacheMiddleware': 900,
+}
+
+EXTENSIONS = {
+    'scraper.extensions.SpiderCloseFunctionality': 500,
 }
 
 try:

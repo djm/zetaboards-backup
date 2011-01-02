@@ -25,10 +25,11 @@ class Thread(models.Model):
     linear chronological way.
     """
     zeta_id = models.PositiveIntegerField(primary_key=True)
-    user = models.ForeignKey('forum.User', related_name="threads")
+    user = models.ForeignKey('forum.User', related_name="threads", blank=True, null=True)
+    username = models.CharField(max_length=255)
     forum = models.ForeignKey('forum.Forum', related_name="threads")
     title = models.CharField(max_length=255)
-    subtitle = models.CharField(max_length=255, blank=True)
+    subtitle = models.CharField(max_length=255, blank=True, null=True)
     replies = models.PositiveIntegerField()
     views = models.PositiveIntegerField()
     date_posted = models.DateTimeField()
@@ -46,7 +47,8 @@ class Post(models.Model):
     """
     zeta_id = models.PositiveIntegerField(primary_key=True)
     thread = models.ForeignKey('forum.Thread', related_name="posts")
-    user = models.ForeignKey('forum.User', related_name="posts")
+    user = models.ForeignKey('forum.User', related_name="posts", blank=True, null=True)
+    username = models.CharField(max_length=255)
     raw_post_bbcode = models.TextField()
     raw_post_html = models.TextField()
     ip_address = models.IPAddressField()
