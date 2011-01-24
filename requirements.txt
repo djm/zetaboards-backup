@@ -1,3 +1,4 @@
 -e svn+http://code.djangoproject.com/svn/django/trunk/#egg=django
 -e git+https://github.com/djm/scrapy.git#egg=scrapy
 south>=0.7
+BeautifulSoup

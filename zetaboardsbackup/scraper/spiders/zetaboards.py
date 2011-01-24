@@ -1,15 +1,18 @@
-import datetime
+from __future__ import division
+import re
+
+from BeautifulSoup import BeautifulSoup
 from scrapy.conf import settings
 from scrapy.exceptions import NotConfigured
 from scrapy.http import Request, FormRequest
 from scrapy.selector import HtmlXPathSelector
 from scrapy.spider import BaseSpider
 
-from scraper.items import ForumItem, ThreadItem, PostItem, UserItem, UserGroupItem
-from scraper.loaders import extract_numbers, ForumLoader, ThreadLoader, PostLoader, UserLoader, \
-        UserGroupLoader
+from scraper.items import ForumItem, ThreadItem, PostItem, RawPostItem, UserItem
+from scraper.loaders import extract_numbers, ForumLoader, ThreadLoader, PostLoader,\
+                            RawPostLoader, UserLoader
 
-from forum.models import Forum, Thread, Post, User, UserGroup
+from forum.models import User
 
 USERNAME = settings.get('ZETABOARDS_USERNAME')
 if not USERNAME:
@@ -121,7 +124,7 @@ class ZetaboardsSpider(BaseSpider):
             # Send off a request to process the root category subpage.
             # including the parent forum in the meta. 
             req = Request(cat_selector.select('@href').extract()[0],
-                          meta={'parent': cat['zeta_id']},
+                          meta={'forum': cat['zeta_id']},
                           callback=self.thread_list)
             items_and_reqs.append(req)
         return items_and_reqs
@@ -138,7 +141,7 @@ class ZetaboardsSpider(BaseSpider):
         reqs = []
         for page in page_range:
             req = Request("%s%i/" % (response.url, page),
-                          meta={'parent': response.request.meta['parent']},
+                          meta={'forum': response.request.meta['forum']},
                           callback=self.page_of_thread_list)
             reqs.append(req)
         return reqs
@@ -157,7 +160,7 @@ class ZetaboardsSpider(BaseSpider):
             if user:
                 items_and_reqs.append(user)
             thr_load.add_xpath('user', 'td[@class="c_cat-starter"]/a/text()')
-            thr_load.add_value('forum', response.request.meta['parent'])
+            thr_load.add_value('forum', response.request.meta['forum'])
             thr_load.add_xpath('title', 'td[@class="c_cat-title"]/a/text()')
             thr_load.add_xpath('subtitle', 'td[@class="c_cat-title"]/div[@class="description"]/text()')
             thr_load.add_xpath('replies', 'td[@class="c_cat-replies"]/a/text()')
@@ -167,7 +170,9 @@ class ZetaboardsSpider(BaseSpider):
             items_and_reqs.append(thr)
             url = thr_selector.select('td[@class="c_cat-title"]/a/@href').extract()[0]
             req = Request("%s1/" % url,
-                          meta={'parent': thr['zeta_id']},
+                          meta={
+                              'forum': response.request.meta['forum'],
+                              'thread': thr['zeta_id']},
                           callback=self.post_list)
             items_and_reqs.append(req)
         return items_and_reqs
@@ -190,22 +195,53 @@ class ZetaboardsSpider(BaseSpider):
         base_thread_url = response.url.strip('1/')
         for page in page_range:
             req = Request("%s%i/" % (base_thread_url, page),
-                          meta={'parent': response.request.meta['parent']},
+                          meta={
+                              'forum': response.request.meta['forum'],
+                              'thread': response.request.meta['thread']},
                           callback=self.page_of_thread_list)
             reqs.append(req)
         return reqs
 
     def page_of_post_list(self, response):
         """
-        Parse a page of topic posts.
+        Parse a page of topic posts. Uses Beautiful soup so we 
+        can easily do a regex lookup on the table row class names.
         """
-        self.log(response.url)
-        return None
+        soup = BeautifulSoup(response.body)
+        posts = soup.findAll('tr', id=re.compile("post-"))
+        items_and_reqs = []
+        for post in posts:
+            # Load up and sort out BeautifulSoup stuff.
+            post_loader = PostLoader(PostItem(), response=response)
+            username = post.find('a', attrs={'class': 'member'})
+            post_info = post.find('td', attrs={'class': 'c_postinfo'})
+            raw_post = post.findNextSibling('tr').find('td', attrs={'class': 'c_post'}).text
+
+            post_loader.add_value('thread', response.request.meta['thread'])
+            post_loader.add_value('zeta_id', post['id'])
+            post_loader.add_value('username', username.text)
+            post_loader.add_xpath('raw_post_html', raw_post)
+            post_loader.add_xpath('ip_address', post_info.find('span', attrs={'class': 'desc'}).text)
+            post_loader.add_xpath('date_posted', post_info.find('span', attrs={'class': 'left'}).text)
+            post = post_loader.load_item()
+            print post
+            items_and_reqs.append(post)
+            edit_url = post.findNextSibling('tr', attrs={'class': 'c_postfoot'}).find('span', attrs={'class': 'left'}).find('a')['href']
+            req = Request(edit_url,
+                    meta={'forum': response.request.meta['forum'],
+                          'thread': response.request.meta['thread'],
+                          'post': post['zeta_id']},
+                          callback=self.individual_post)
+            items_and_reqs.append(req)
+        return items_and_reqs
 
     def individual_post(self, response):
         """
         We visit the edit page for each post so we can grab the raw BBcode.
         """
-        return None
+        post_load = RawPostLoader(RawPostItem(), response=response)
+        post_load.add_value('zeta_id', response.request.meta['post'])
+        post_load.add_xpath('', '')
+        return post_load.load_item()
 
 SPIDER = ZetaboardsSpider()

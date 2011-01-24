@@ -47,11 +47,16 @@ class ThreadLoader(XPathItemLoader):
     user_in = MapCompose(unicode.strip)
     replies_in = MapCompose(unicode.strip, to_int)
     views_in = MapCompose(unicode.strip, to_int)
-
     date_posted_in = MapCompose(unicode.strip, strip_start_date, to_datetime_long)
 
 
 class PostLoader(XPathItemLoader):
+    default_output_processor = TakeFirst()
+
+    zeta_id_in = MapCompose(unicode.strip, extract_numbers)
+
+
+class RawPostLoader(XPathItemLoader):
     default_output_processor = TakeFirst()
 
     zeta_id_in = MapCompose(unicode.strip, extract_numbers)

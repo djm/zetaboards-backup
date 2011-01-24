@@ -49,13 +49,10 @@ class Post(models.Model):
     thread = models.ForeignKey('forum.Thread', related_name="posts")
     user = models.ForeignKey('forum.User', related_name="posts", blank=True, null=True)
     username = models.CharField(max_length=255)
-    raw_post_bbcode = models.TextField()
-    raw_post_html = models.TextField()
+    raw_post_bbcode = models.TextField(blank=True)
+    raw_post_html = models.TextField(blank=True)
     ip_address = models.IPAddressField()
     date_posted = models.DateTimeField()
-    edited_user = models.ForeignKey('forum.User', related_name="edited_posts",
-                                    blank=True, null=True)
-    date_edited = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ['date_posted']
