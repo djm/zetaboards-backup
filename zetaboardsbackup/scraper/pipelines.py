@@ -2,8 +2,8 @@
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/topics/item-pipeline.html
-from forum.models import Forum, UserGroup
-from scraper.items import ForumItem, ThreadItem, PostItem, UserItem, UserGroupItem
+from forum.models import Forum, Post, UserGroup
+from scraper.items import ForumItem, ThreadItem, PostItem, RawPostItem, UserItem, UserGroupItem
 
 class ZetaboardsPipeline(object):
     """
@@ -47,13 +47,30 @@ class ZetaboardsPipeline(object):
                                         )
         elif isinstance(item, PostItem):
             spider.log("Processing Post Item.")
+            post, created = item.django_model._default_manager.get_or_create(
+                                zeta_id=item['zeta_id'],
+                                defaults={
+                                        'thread_id': item['thread'],
+                                        'username': item['username'],
+                                        #raw_post_bbcode gets added from RawPostItem
+                                        'raw_post_html': item['raw_post_html'],
+                                        'ip_address': item['ip_address'],
+                                        'date_posted': item['date_posted']
+                                    }
+                                )
+        elif isinstance(item, RawPostItem):
+            spider.log("Processing RawPost Item.")
+            post = Post.objects.get(zeta_id=item['zeta_id'])
+            post.raw_post_bbcode = item['raw_post_bbcode'] 
+            post.save()
         elif isinstance(item, UserItem):
             spider.log("Processing User Item.")
+            user_group, created = UserGroup.objects.get_or_create(title=item['user_group'])
             django_item, created = item.django_model._default_manager.get_or_create(
                                         zeta_id=item['zeta_id'],
                                         defaults={
                                             'username': item['username'],
-                                            'user_group': item['user_group'],
+                                            'user_group': user_group,
                                             'member_number': item['member_number'],
                                             'post_count': item['post_count'],
                                             'signature': item['signature'],
@@ -61,6 +78,4 @@ class ZetaboardsPipeline(object):
                                             'date_joined': item['date_joined'],
                                             }
                                         )
-        elif isinstance(item, UserGroupItem):
-            spider.log("Processing UserGroup Item.")
         return django_item

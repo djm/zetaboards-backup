@@ -198,7 +198,8 @@ class ZetaboardsSpider(BaseSpider):
                           meta={
                               'forum': response.request.meta['forum'],
                               'thread': response.request.meta['thread']},
-                          callback=self.page_of_thread_list)
+                          callback=self.page_of_thread_list,
+                          priority=80)
             reqs.append(req)
         return reqs
 
@@ -220,18 +221,18 @@ class ZetaboardsSpider(BaseSpider):
             post_loader.add_value('thread', response.request.meta['thread'])
             post_loader.add_value('zeta_id', post['id'])
             post_loader.add_value('username', username.text)
-            post_loader.add_xpath('raw_post_html', raw_post)
-            post_loader.add_xpath('ip_address', post_info.find('span', attrs={'class': 'desc'}).text)
-            post_loader.add_xpath('date_posted', post_info.find('span', attrs={'class': 'left'}).text)
-            post = post_loader.load_item()
-            print post
-            items_and_reqs.append(post)
+            post_loader.add_value('raw_post_html', raw_post)
+            post_loader.add_value('ip_address', post_info.find('span', attrs={'class': 'desc'}).text)
+            post_loader.add_value('date_posted', post_info.find('span', attrs={'class': 'left'}).text)
+            post_item = post_loader.load_item()
+            items_and_reqs.append(post_item)
             edit_url = post.findNextSibling('tr', attrs={'class': 'c_postfoot'}).find('span', attrs={'class': 'left'}).find('a')['href']
             req = Request(edit_url,
                     meta={'forum': response.request.meta['forum'],
                           'thread': response.request.meta['thread'],
-                          'post': post['zeta_id']},
-                          callback=self.individual_post)
+                          'post': post_item['zeta_id']},
+                          callback=self.individual_post,
+                          priority=-20)
             items_and_reqs.append(req)
         return items_and_reqs
 
@@ -241,7 +242,7 @@ class ZetaboardsSpider(BaseSpider):
         """
         post_load = RawPostLoader(RawPostItem(), response=response)
         post_load.add_value('zeta_id', response.request.meta['post'])
-        post_load.add_xpath('', '')
+        post_load.add_xpath('raw_post_bbcode', '//textarea[@id="c_post-text"]/text()')
         return post_load.load_item()
 
 SPIDER = ZetaboardsSpider()

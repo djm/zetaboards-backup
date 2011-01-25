@@ -16,8 +16,14 @@ class SpiderCloseFunctionality(object):
         that we've scraped the user object yet.
         """
         for thread in Thread.objects.all():
-            thread.user = User.objects.get(username=thread.username)
-            thread.save()
+            try:
+                thread.user = User.objects.get(username=thread.username)
+                thread.save()
+            except User.DoesNotExist:
+                pass
         for post in Post.objects.all():
-            post.user = User.objects.lget(username=post.username)
-            post.save()
+            try:
+                post.user = User.objects.get(username=post.username)
+                post.save()
+            except User.DoesNotExist:
+                pass

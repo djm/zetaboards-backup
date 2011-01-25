@@ -49,9 +49,9 @@ class Post(models.Model):
     thread = models.ForeignKey('forum.Thread', related_name="posts")
     user = models.ForeignKey('forum.User', related_name="posts", blank=True, null=True)
     username = models.CharField(max_length=255)
-    raw_post_bbcode = models.TextField(blank=True)
-    raw_post_html = models.TextField(blank=True)
-    ip_address = models.IPAddressField()
+    raw_post_bbcode = models.TextField(blank=True, null=True)
+    raw_post_html = models.TextField(blank=True, null=True)
+    ip_address = models.IPAddressField(blank=True, null=True)
     date_posted = models.DateTimeField()
 
     class Meta:
