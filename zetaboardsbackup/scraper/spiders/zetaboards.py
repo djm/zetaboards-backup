@@ -145,6 +145,7 @@ class ZetaboardsSpider(BaseSpider):
                           meta={'forum': response.request.meta['forum']},
                           callback=self.page_of_thread_list)
             reqs.append(req)
+        self.log("%s -> %i pages of threads." % (response.url, len(reqs)), level=log.INFO)
         return reqs
 
     def page_of_thread_list(self, response):
@@ -180,6 +181,7 @@ class ZetaboardsSpider(BaseSpider):
                               },
                           callback=self.post_list)
             items_and_reqs.append(req)
+        self.log("%s -> %i items." % (response.url, len(items_and_reqs)), level=log.ERROR)
         return items_and_reqs
 
     def post_list(self, response):
@@ -204,7 +206,7 @@ class ZetaboardsSpider(BaseSpider):
                                   'forum': response.request.meta['forum'],
                                   'thread': response.request.meta['thread']},
                           callback=self.page_of_thread_list)
-            self.log("Sending to %s" % url, level=log.INFO)
+            self.log("Sending to %s" % url, level=log.ERROR)
             reqs.append(req)
         return reqs
 
@@ -213,7 +215,7 @@ class ZetaboardsSpider(BaseSpider):
         Parse a page of topic posts. Uses Beautiful soup so we 
         can easily do a regex lookup on the table row class names.
         """
-        self.log("Receiving from %s" % response.url, level=log.INFO)
+        self.log("Receiving from %s" % response.url, level=log.ERROR)
         soup = BeautifulSoup(response.body)
         posts = soup.findAll('tr', id=re.compile("post-"))
         items_and_reqs = []
@@ -239,7 +241,8 @@ class ZetaboardsSpider(BaseSpider):
                           'post': post_item['zeta_id']},
                           callback=self.individual_post,
                           priority=-20)
-            items_and_reqs.append(req)
+            #items_and_reqs.append(req)
+        self.log("%s -> %i items. %s" % (response.url, len(items_and_reqs), items_and_reqs), level=log.ERROR)
         return items_and_reqs
 
     def individual_post(self, response):
