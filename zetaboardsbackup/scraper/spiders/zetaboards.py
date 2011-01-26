@@ -145,7 +145,7 @@ class ZetaboardsSpider(BaseSpider):
                           meta={'forum': response.request.meta['forum']},
                           callback=self.page_of_thread_list)
             reqs.append(req)
-        self.log("%s -> %i pages of threads." % (response.url, len(reqs)), level=log.INFO)
+        self.log("[THREAD LIST] %s -> %i pages of threads." % (response.url, len(reqs)), level=log.INFO)
         return reqs
 
     def page_of_thread_list(self, response):
@@ -181,7 +181,7 @@ class ZetaboardsSpider(BaseSpider):
                               },
                           callback=self.post_list)
             items_and_reqs.append(req)
-        self.log("%s -> %i items." % (response.url, len(items_and_reqs)), level=log.ERROR)
+        self.log("[THREAD LIST] %s -> %i threads." % (response.url, len(items_and_reqs)), level=log.INFO)
         return items_and_reqs
 
     def post_list(self, response):
@@ -205,9 +205,9 @@ class ZetaboardsSpider(BaseSpider):
             req = Request(url, meta={
                                   'forum': response.request.meta['forum'],
                                   'thread': response.request.meta['thread']},
-                          callback=self.page_of_thread_list)
-            self.log("Sending to %s" % url, level=log.ERROR)
+                          callback=self.page_of_post_list)
             reqs.append(req)
+        self.log("[THREAD] %s -> %i thread pages." % (response.url, len(reqs)), level=log.INFO)
         return reqs
 
     def page_of_post_list(self, response):
@@ -215,7 +215,6 @@ class ZetaboardsSpider(BaseSpider):
         Parse a page of topic posts. Uses Beautiful soup so we 
         can easily do a regex lookup on the table row class names.
         """
-        self.log("Receiving from %s" % response.url, level=log.ERROR)
         soup = BeautifulSoup(response.body)
         posts = soup.findAll('tr', id=re.compile("post-"))
         items_and_reqs = []
@@ -241,8 +240,8 @@ class ZetaboardsSpider(BaseSpider):
                           'post': post_item['zeta_id']},
                           callback=self.individual_post,
                           priority=-20)
-            #items_and_reqs.append(req)
-        self.log("%s -> %i items. %s" % (response.url, len(items_and_reqs), items_and_reqs), level=log.ERROR)
+            items_and_reqs.append(req)
+        self.log("[THREAD] %s -> %i posts returned." % (response.url, len(items_and_reqs)), level=log.INFO)
         return items_and_reqs
 
     def individual_post(self, response):
@@ -256,6 +255,3 @@ class ZetaboardsSpider(BaseSpider):
         return post_load.load_item()
 
 SPIDER = ZetaboardsSpider()
-
-      #  if int(response.request.meta['thread']) in [8609396, 8607143, 8599241, 8553459, 8548529, 8540033, 8536013, 8504163, 572270, 572267, 572234, 572233, 572208, 572202, 572196, 572194, 572192, 572184, 572181, 572169, 572152, 572151, 572144, 572143, 572128, 572112, 572110, 572106, 572104, 572093, 572087, 572084, 572080, 572078, 572074, 572070, 572067, 572066, 572065, 572052, 572044, 572037, 572036, 572031, 572023, 572015, 572011, 572010, 572005, 572003, 571998, 571997, 571994, 571992, 571988, 571986, 571985, 571979]:
-    #        import ipdb; ipdb.set_trace();
