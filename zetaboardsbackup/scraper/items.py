@@ -17,6 +17,7 @@ class PostItem(DjangoItem):
 
 class RawPostItem(Item):
     zeta_id = Field()
+    thread = Field()
     raw_post_bbcode = Field()
 
 class UserItem(DjangoItem):

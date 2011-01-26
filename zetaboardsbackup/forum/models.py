@@ -50,7 +50,6 @@ class Post(models.Model):
     user = models.ForeignKey('forum.User', related_name="posts", blank=True, null=True)
     username = models.CharField(max_length=255)
     raw_post_bbcode = models.TextField(blank=True, null=True)
-    raw_post_html = models.TextField(blank=True, null=True)
     ip_address = models.IPAddressField(blank=True, null=True)
     date_posted = models.DateTimeField()
 
@@ -58,7 +57,7 @@ class Post(models.Model):
         ordering = ['date_posted']
 
     def __unicode__(self):
-        return "Post in '%s' by %s" % (self.thread.title, self.user.username)
+        return "%s - %s" % (self.username, self.date_posted)
 
 
 class User(models.Model):

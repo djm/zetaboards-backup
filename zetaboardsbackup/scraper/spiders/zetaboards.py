@@ -2,6 +2,7 @@ from __future__ import division
 import re
 
 from BeautifulSoup import BeautifulSoup
+from scrapy import log
 from scrapy.conf import settings
 from scrapy.exceptions import NotConfigured
 from scrapy.http import Request, FormRequest
@@ -169,10 +170,14 @@ class ZetaboardsSpider(BaseSpider):
             thr = thr_load.load_item()
             items_and_reqs.append(thr)
             url = thr_selector.select('td[@class="c_cat-title"]/a/@href').extract()[0]
+            # We have to deliberately go the first page, else it sends us to the last
+            # page by default, hence appending the 1/.
             req = Request("%s1/" % url,
                           meta={
                               'forum': response.request.meta['forum'],
-                              'thread': thr['zeta_id']},
+                              'thread': thr['zeta_id'],
+                              'base_url': url
+                              },
                           callback=self.post_list)
             items_and_reqs.append(req)
         return items_and_reqs
@@ -192,14 +197,14 @@ class ZetaboardsSpider(BaseSpider):
             # so we only have one page.
             return self.page_of_post_list(response)
         reqs = []
-        base_thread_url = response.url.strip('1/')
+        base_thread_url = response.request.meta['base_url']
         for page in page_range:
-            req = Request("%s%i/" % (base_thread_url, page),
-                          meta={
-                              'forum': response.request.meta['forum'],
-                              'thread': response.request.meta['thread']},
-                          callback=self.page_of_thread_list,
-                          priority=80)
+            url = "%s%i/" % (base_thread_url, page)
+            req = Request(url, meta={
+                                  'forum': response.request.meta['forum'],
+                                  'thread': response.request.meta['thread']},
+                          callback=self.page_of_thread_list)
+            self.log("Sending to %s" % url, level=log.INFO)
             reqs.append(req)
         return reqs
 
@@ -208,6 +213,7 @@ class ZetaboardsSpider(BaseSpider):
         Parse a page of topic posts. Uses Beautiful soup so we 
         can easily do a regex lookup on the table row class names.
         """
+        self.log("Receiving from %s" % response.url, level=log.INFO)
         soup = BeautifulSoup(response.body)
         posts = soup.findAll('tr', id=re.compile("post-"))
         items_and_reqs = []
@@ -221,10 +227,10 @@ class ZetaboardsSpider(BaseSpider):
             post_loader.add_value('thread', response.request.meta['thread'])
             post_loader.add_value('zeta_id', post['id'])
             post_loader.add_value('username', username.text)
-            post_loader.add_value('raw_post_html', raw_post)
             post_loader.add_value('ip_address', post_info.find('span', attrs={'class': 'desc'}).text)
             post_loader.add_value('date_posted', post_info.find('span', attrs={'class': 'left'}).text)
             post_item = post_loader.load_item()
+            self.log(post_item, level=log.ERROR)
             items_and_reqs.append(post_item)
             edit_url = post.findNextSibling('tr', attrs={'class': 'c_postfoot'}).find('span', attrs={'class': 'left'}).find('a')['href']
             req = Request(edit_url,
@@ -242,7 +248,11 @@ class ZetaboardsSpider(BaseSpider):
         """
         post_load = RawPostLoader(RawPostItem(), response=response)
         post_load.add_value('zeta_id', response.request.meta['post'])
+        post_load.add_value('thread', response.request.meta['thread'])
         post_load.add_xpath('raw_post_bbcode', '//textarea[@id="c_post-text"]/text()')
         return post_load.load_item()
 
 SPIDER = ZetaboardsSpider()
+
+      #  if int(response.request.meta['thread']) in [8609396, 8607143, 8599241, 8553459, 8548529, 8540033, 8536013, 8504163, 572270, 572267, 572234, 572233, 572208, 572202, 572196, 572194, 572192, 572184, 572181, 572169, 572152, 572151, 572144, 572143, 572128, 572112, 572110, 572106, 572104, 572093, 572087, 572084, 572080, 572078, 572074, 572070, 572067, 572066, 572065, 572052, 572044, 572037, 572036, 572031, 572023, 572015, 572011, 572010, 572005, 572003, 571998, 571997, 571994, 571992, 571988, 571986, 571985, 571979]:
+    #        import ipdb; ipdb.set_trace();
