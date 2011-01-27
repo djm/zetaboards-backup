@@ -189,16 +189,20 @@ class ZetaboardsSpider(BaseSpider):
         Calculate the number of pages in thread and return
         a request for each page so that we can grab the posts.
         """
+        reqs = []
         hxs = HtmlXPathSelector(response)
         # We now need to work out how many pages are in this topic, if more than one.
         try:
             last_page = hxs.select('//ul[@class="cat-pages"]/li[last()]/a/text()').extract()[0]
-            page_range = range(1, int(last_page)+1)
         except IndexError:
-            # Then we couldn't find a pagination list, 
-            # so we only have one page.
+            # No pagination block so we only have this one page.
+            # Return the callback.
             return self.page_of_post_list(response)
-        reqs = []
+        else:
+            # We found a pagination list, call the callback for this (the first)
+            # page, and generate a page range for the rest to pass back as requests.
+            reqs += self.page_of_post_list(response)
+            page_range = range(2, int(last_page)+1)
         base_thread_url = response.request.meta['base_url']
         for page in page_range:
             url = "%s%i/" % (base_thread_url, page)
@@ -217,7 +221,7 @@ class ZetaboardsSpider(BaseSpider):
         """
         soup = BeautifulSoup(response.body)
         posts = soup.findAll('tr', id=re.compile("post-"))
-        items_and_reqs = []
+        items, reqs = [], []
         for post in posts:
             # Load up and sort out BeautifulSoup stuff.
             post_loader = PostLoader(PostItem(), response=response)
@@ -231,8 +235,7 @@ class ZetaboardsSpider(BaseSpider):
             post_loader.add_value('ip_address', post_info.find('span', attrs={'class': 'desc'}).text)
             post_loader.add_value('date_posted', post_info.find('span', attrs={'class': 'left'}).text)
             post_item = post_loader.load_item()
-            self.log(post_item, level=log.ERROR)
-            items_and_reqs.append(post_item)
+            items.append(post_item)
             edit_url = post.findNextSibling('tr', attrs={'class': 'c_postfoot'}).find('span', attrs={'class': 'left'}).find('a')['href']
             req = Request(edit_url,
                     meta={'forum': response.request.meta['forum'],
@@ -240,9 +243,9 @@ class ZetaboardsSpider(BaseSpider):
                           'post': post_item['zeta_id']},
                           callback=self.individual_post,
                           priority=-20)
-            items_and_reqs.append(req)
-        self.log("[THREAD] %s -> %i posts returned." % (response.url, len(items_and_reqs)), level=log.INFO)
-        return items_and_reqs
+            reqs.append(req)
+        self.log("[THREAD] %s -> %i posts/%i reqs returned." % (response.url, len(items), len(reqs)), level=log.ERROR)
+        return items + reqs
 
     def individual_post(self, response):
         """

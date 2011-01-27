@@ -23,7 +23,18 @@ def strip_start_date(s):
     return s.replace('Start Date ', '')
 
 def to_datetime_long(s):
-    dt = datetime.datetime.strptime(s, '%b %d %Y, %I:%M %p')
+    try:
+        dt = datetime.datetime.strptime(s, '%b %d %Y, %I:%M %p')
+    except ValueError:
+        now = datetime.datetime.now()
+        # We lose the time here.
+        if 'Yesterday' in s:
+            yesterday = now - datetime.timedelta(days=1)
+            dt = yesterday
+        elif 'Today' in s:
+            dt = now
+        else:
+            print s
     return dt
 
 def to_datetime_short(s):
