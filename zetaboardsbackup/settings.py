@@ -50,6 +50,8 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'zetaboardsbackup.urls'
 
+MEDIA_ROOT = here('../media')
+
 TEMPLATE_DIRS = (
     here('templates'),
 )
