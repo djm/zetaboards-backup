@@ -244,7 +244,7 @@ class ZetaboardsSpider(BaseSpider):
                           callback=self.individual_post,
                           priority=-20)
             reqs.append(req)
-        self.log("[THREAD] %s -> %i posts/%i reqs returned." % (response.url, len(items), len(reqs)), level=log.ERROR)
+        self.log("[THREAD] %s -> %i posts/%i reqs returned." % (response.url, len(items), len(reqs)), level=log.DEBUG)
         return items + reqs
 
     def individual_post(self, response):

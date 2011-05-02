@@ -2,6 +2,8 @@
 All exporter classes should subclass from this base exporter.
 """
 
+from django.utils.encoding import smart_str
+
 from zetaboardsbackup import log
 
 class BaseExporter(object):
@@ -14,10 +16,14 @@ class BaseExporter(object):
         Runs the export process.
         """
         log.info("Exporter initialised.")
-        self.export_users()
-        self.export_forums()
-        self.export_threads()
-        self.export_posts()
+        output = u""
+        #output += self.export_users()
+        #output += self.export_forums()
+        output += self.export_threads()
+        output += self.export_posts()
+        f = open('output.sql', 'w')
+        f.write(smart_str(output))
+        f.close()
 
     def export_users(self):
         raise NotImplementedError
